@@ -6,7 +6,11 @@ using namespace Eigen;
 
 Simulator::Simulator() {
     Init();
-    GenMeasSE3XYZ();
+
+    double focalLength = 1000.;
+    Vector2d principalPoint(320., 240.);
+    mpCamParam = new g2o::CameraParameters(focalLength, principalPoint, 0.);
+    mpCamParam->setId(0);
 }
 
 void Simulator::Init() {
@@ -22,8 +26,8 @@ void Simulator::Init() {
     }
 
     // initialize camera poses
-    for (size_t i=0; i<15; ++i) {
-        Vector3d trans(i*0.04-1.,0,0);
+    for (size_t i=0; i<10; ++i) {
+        Vector3d trans(i*0.1,0,0);
 
         Eigen::Quaterniond q;
         q.setIdentity();
@@ -53,3 +57,64 @@ void Simulator::GenMeasSE3XYZ() {
         }
     }
 }
+
+void Simulator::GenMeasXYZ2UV() {
+    mvMeasXYZ2UV.clear();
+
+    for (size_t i=0; i<mvTrueMPs.size(); i++) {
+        for (size_t j=0; j<mvTrueKFs.size(); j++) {
+
+            MeasXYZ2UV measTmp;
+            measTmp.idKF = j;
+            measTmp.idMP = i;
+
+            measTmp.z = mpCamParam->cam_map(mvTrueKFs.at(j).map(mvTrueMPs.at(i)));
+            measTmp.z += g2o::Vector2d(Sample::gaussian(1),
+                                       Sample::gaussian(1));
+
+            measTmp.info = 1.5 * g2o::Matrix2d::Identity();
+
+            if (measTmp.z[0]>=0 && measTmp.z[1]>=0 &&
+                    measTmp.z[0]<640 && measTmp.z[1]<480) {
+                mvMeasXYZ2UV.push_back(measTmp);
+            }
+        }
+    }
+}
+
+void Simulator::GenMeasSE3Expmap() {
+    mvMeasSE3Expmap.clear();
+
+    for (size_t i=0; i<mvTrueKFs.size()-1; i++) {
+
+        MeasSE3Expmap measTmp;
+        measTmp.id1 = i;
+        measTmp.id2 = i+1;
+
+        measTmp.z = mvTrueKFs.at(i).inverse() * mvTrueKFs.at(i+1);
+        measTmp.info = 100 * g2o::Matrix6d::Identity();
+
+        measTmp.info(3,3) = 1000;
+        measTmp.info(4,4) = 1000;
+        measTmp.info(5,5) = 1000;
+
+        mvMeasSE3Expmap.push_back(measTmp);
+
+//        cout << measTmp.info << endl;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

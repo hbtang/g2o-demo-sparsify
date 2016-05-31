@@ -104,69 +104,54 @@ int main(int argc, const char* argv[]){
     Simulator sim;
     sim.GenMeasSE3XYZ();
     sim.GenMeasXYZ2UV();
-    sim.GenMeasSE3Expmap();
 
     // init optimizer
     SlamOptimizer optimizer;
     initOptimizer(optimizer, true);
 
-//    g2o::Isometry3D se3offset = g2o::Isometry3D::Identity();
-//    addParaSE3Offset(optimizer, se3offset, 1);
-
-    assert(optimizer.addParameter(sim.mpCamParam));
+    g2o::Isometry3D se3offset = g2o::Isometry3D::Identity();
+    addParaSE3Offset(optimizer, se3offset, 0);
 
     // set vetex initial guess
     int vertexId = 0;
 
     // add KF vertex
     for(size_t i=0; i<sim.mvTrueKFs.size(); i++) {
-
-        g2o::SE3Quat ps3KFTmp = sim.mvTrueKFs.at(i);
-        cout << ps3KFTmp << endl;
-        if (i < 1) {
-            addVertexSE3Expmap(optimizer, ps3KFTmp, vertexId, true);
+        g2o::VertexSE3 * vSE3Tmp = new g2o::VertexSE3();
+        vSE3Tmp->setId(vertexId);
+        vSE3Tmp->setEstimate(sim.mvTrueKFs.at(i));
+        if (i == 0) {
+            vSE3Tmp->setFixed(true);
         }
-        else {
-            addVertexSE3Expmap(optimizer, ps3KFTmp, vertexId, false);
-        }
+        optimizer.addVertex(vSE3Tmp);
         vertexId ++;
     }
 
     // add MP vertex
     for(size_t i=0; i<sim.mvTrueMPs.size(); i++) {
+        g2o::VertexPointXYZ* vXYZTmp = new g2o::VertexPointXYZ();
 
-        g2o::Vector3d pt3MPTmp = sim.mvTrueMPs.at(i)
-                + Vector3d(Sample::gaussian(0.1),
-                           Sample::gaussian(0.1),
-                           Sample::gaussian(0.1));
-
-        addVertexSBAXYZ(optimizer, pt3MPTmp, vertexId, true, false);
+        vXYZTmp->setId(vertexId);
+        vXYZTmp->setMarginalized(true);
+        vXYZTmp->setEstimate(sim.mvTrueMPs.at(i)
+                             + Vector3d(Sample::gaussian(0.1),
+                                        Sample::gaussian(0.1),
+                                        Sample::gaussian(0.1)));
+        assert(optimizer.addVertex(vXYZTmp));
 
         vertexId ++;
     }
 
-    // add image edges
-    for(size_t i=0; i<sim.mvMeasXYZ2UV.size(); i++) {
+    // add edges
+    for(size_t i=0; i<sim.mvMeasSE3XYZ.size(); i++) {
 
-        int vertexIdMp = sim.mvMeasXYZ2UV.at(i).idMP + sim.mvTrueKFs.size();
-        int vertexIdKF = sim.mvMeasXYZ2UV.at(i).idKF;
+        int vertexIdMp = sim.mvMeasSE3XYZ.at(i).idMP + sim.mvTrueKFs.size();
+        int vertexIdKF = sim.mvMeasSE3XYZ.at(i).idKF;
 
-        g2o::Vector2d z = sim.mvMeasXYZ2UV.at(i).z;
-        g2o::Matrix2d info = sim.mvMeasXYZ2UV.at(i).info;
+        g2o::Vector3D z = sim.mvMeasSE3XYZ.at(i).z;
+        g2o::Matrix3d info = sim.mvMeasSE3XYZ.at(i).info;
 
-        addEdgeXYZ2UV(optimizer, z, vertexIdMp, vertexIdKF, 0, info, 5.991);
-    }
-
-    // add odometry edges
-    for(size_t i=0; i<sim.mvMeasSE3Expmap.size(); i++) {
-
-        int vertexId1 = sim.mvMeasSE3Expmap.at(i).id1;
-        int vertexId2 = sim.mvMeasSE3Expmap.at(i).id2;
-
-        g2o::SE3Quat z = sim.mvMeasSE3Expmap.at(i).z;
-        g2o::Matrix6d info = sim.mvMeasSE3Expmap.at(i).info;
-
-        addEdgeSE3Expmap(optimizer, z, vertexId1, vertexId2, info);
+        addEdgeSE3XYZ(optimizer, z, vertexIdKF, vertexIdMp, 0, info, 1);
     }
 
     // start g2o optimization
@@ -179,10 +164,13 @@ int main(int argc, const char* argv[]){
     cout << endl;
 
     // results output
-    cout << "cam 0: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 0)) << endl;
-    cout << "cam 1: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 1)) << endl;
-    cout << "cam 2: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 2)) << endl;
-    cout << "cam 9: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 9)) << endl;
 
+    cout << "cam 1: " << endl << toSE3Quat(estimateVertexSE3(optimizer, 1)) << endl;
+
+//    for (int i = 15; i <= 30; i ++) {
+//        g2o::Vector3D v_p = estimateVertexXYZ(optimizer, i);
+//        Vector3d diff = v_p - sim.mvTrueMPs[i-15];
+//        cout << diff.dot(diff) << endl;
+//    }
 
 }
