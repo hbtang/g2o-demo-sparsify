@@ -27,7 +27,7 @@ void Simulator::Init() {
 
     // initialize camera poses
     for (size_t i=0; i<10; ++i) {
-        Vector3d trans(i*0.1,0,0);
+        Vector3d trans(i*0.05,0,0);
 
         Eigen::Quaterniond q;
         q.setIdentity();
@@ -72,7 +72,7 @@ void Simulator::GenMeasXYZ2UV() {
             measTmp.z += g2o::Vector2d(Sample::gaussian(1),
                                        Sample::gaussian(1));
 
-            measTmp.info = 1.5 * g2o::Matrix2d::Identity();
+            measTmp.info = 1.0 * g2o::Matrix2d::Identity();
 
             if (measTmp.z[0]>=0 && measTmp.z[1]>=0 &&
                     measTmp.z[0]<640 && measTmp.z[1]<480) {
@@ -92,11 +92,11 @@ void Simulator::GenMeasSE3Expmap() {
         measTmp.id2 = i+1;
 
         measTmp.z = mvTrueKFs.at(i).inverse() * mvTrueKFs.at(i+1);
-        measTmp.info = 100 * g2o::Matrix6d::Identity();
+        measTmp.info = 10000 * g2o::Matrix6d::Identity();
 
-        measTmp.info(3,3) = 1000;
-        measTmp.info(4,4) = 1000;
-        measTmp.info(5,5) = 1000;
+//        measTmp.info(3,3) = 1000;
+//        measTmp.info(4,4) = 1000;
+//        measTmp.info(5,5) = 1000;
 
         mvMeasSE3Expmap.push_back(measTmp);
 

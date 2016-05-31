@@ -122,7 +122,6 @@ int main(int argc, const char* argv[]){
     for(size_t i=0; i<sim.mvTrueKFs.size(); i++) {
 
         g2o::SE3Quat ps3KFTmp = sim.mvTrueKFs.at(i);
-        cout << ps3KFTmp << endl;
         if (i < 1) {
             addVertexSE3Expmap(optimizer, ps3KFTmp, vertexId, true);
         }
@@ -135,10 +134,10 @@ int main(int argc, const char* argv[]){
     // add MP vertex
     for(size_t i=0; i<sim.mvTrueMPs.size(); i++) {
 
-        g2o::Vector3d pt3MPTmp = sim.mvTrueMPs.at(i)
-                + Vector3d(Sample::gaussian(0.1),
-                           Sample::gaussian(0.1),
-                           Sample::gaussian(0.1));
+        g2o::Vector3d pt3MPTmp = sim.mvTrueMPs.at(i);
+//                + Vector3d(Sample::gaussian(0.1),
+//                           Sample::gaussian(0.1),
+//                           Sample::gaussian(0.1));
 
         addVertexSBAXYZ(optimizer, pt3MPTmp, vertexId, true, false);
 
@@ -157,7 +156,7 @@ int main(int argc, const char* argv[]){
         addEdgeXYZ2UV(optimizer, z, vertexIdMp, vertexIdKF, 0, info, 5.991);
     }
 
-    // add odometry edges
+    // add odometry edges6
     for(size_t i=0; i<sim.mvMeasSE3Expmap.size(); i++) {
 
         int vertexId1 = sim.mvMeasSE3Expmap.at(i).id1;
@@ -169,16 +168,16 @@ int main(int argc, const char* argv[]){
         addEdgeSE3Expmap(optimizer, z, vertexId1, vertexId2, info);
     }
 
-    // start g2o optimization
+    // do g2o optimization
     cout << endl;
     optimizer.initializeOptimization();
     optimizer.setVerbose(true);
     cout << endl;
     cout << "Performing full BA:" << endl;
-    optimizer.optimize(10);
+    optimizer.optimize(40);
     cout << endl;
 
-    // results output
+    // show results
     cout << "cam 0: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 0)) << endl;
     cout << "cam 1: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 1)) << endl;
     cout << "cam 2: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 2)) << endl;
