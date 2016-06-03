@@ -53,7 +53,7 @@ using namespace Eigen;
 using namespace std;
 using namespace odoslam;
 
-int main(int argc, const char* argv[]){
+int main_copy(int argc, const char* argv[]){
 
     if (argc<2)
     {

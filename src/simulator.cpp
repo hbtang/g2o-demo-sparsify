@@ -19,7 +19,7 @@ void Simulator::Init() {
     mvTrueKFs.clear();
 
     // initialize map points
-    for (size_t i=0;i<500; ++i) {
+    for (size_t i=0; i<100; ++i) {
         mvTrueMPs.push_back(Vector3d((Sample::uniform()-0.5)*3,
                                      Sample::uniform()-0.5,
                                      Sample::uniform()+3));
@@ -27,7 +27,13 @@ void Simulator::Init() {
 
     // initialize camera poses
     for (size_t i=0; i<10; ++i) {
-        Vector3d trans(i*0.05,0,0);
+        Vector3d trans;
+        if (i<5) {
+            trans << i*0.2-0.5, -0.2, 0;
+        }
+        else {
+            trans << -(i-5.0)*0.2+0.5, +0.2, 0;
+        }
 
         Eigen::Quaterniond q;
         q.setIdentity();
@@ -92,7 +98,7 @@ void Simulator::GenMeasSE3Expmap() {
         measTmp.id2 = i+1;
 
         measTmp.z = mvTrueKFs.at(i).inverse() * mvTrueKFs.at(i+1);
-        measTmp.info = 10000 * g2o::Matrix6d::Identity();
+        measTmp.info = 1e8 * g2o::Matrix6d::Identity();
 
 //        measTmp.info(3,3) = 1000;
 //        measTmp.info(4,4) = 1000;

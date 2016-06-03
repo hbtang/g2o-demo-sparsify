@@ -48,6 +48,7 @@
 #include "converter.h"
 #include "sample.h"
 #include "simulator.h"
+#include "sparsifier.h"
 
 using namespace Eigen;
 using namespace std;
@@ -110,8 +111,8 @@ int main(int argc, const char* argv[]){
     SlamOptimizer optimizer;
     initOptimizer(optimizer, true);
 
-//    g2o::Isometry3D se3offset = g2o::Isometry3D::Identity();
-//    addParaSE3Offset(optimizer, se3offset, 1);
+    //    g2o::Isometry3D se3offset = g2o::Isometry3D::Identity();
+    //    addParaSE3Offset(optimizer, se3offset, 1);
 
     assert(optimizer.addParameter(sim.mpCamParam));
 
@@ -122,6 +123,7 @@ int main(int argc, const char* argv[]){
     for(size_t i=0; i<sim.mvTrueKFs.size(); i++) {
 
         g2o::SE3Quat ps3KFTmp = sim.mvTrueKFs.at(i);
+
         if (i < 1) {
             addVertexSE3Expmap(optimizer, ps3KFTmp, vertexId, true);
         }
@@ -134,10 +136,10 @@ int main(int argc, const char* argv[]){
     // add MP vertex
     for(size_t i=0; i<sim.mvTrueMPs.size(); i++) {
 
-        g2o::Vector3d pt3MPTmp = sim.mvTrueMPs.at(i);
-//                + Vector3d(Sample::gaussian(0.1),
-//                           Sample::gaussian(0.1),
-//                           Sample::gaussian(0.1));
+        g2o::Vector3d pt3MPTmp = sim.mvTrueMPs.at(i)
+                + Vector3d(Sample::gaussian(0.1),
+                           Sample::gaussian(0.1),
+                           Sample::gaussian(0.1));
 
         addVertexSBAXYZ(optimizer, pt3MPTmp, vertexId, true, false);
 
@@ -174,14 +176,33 @@ int main(int argc, const char* argv[]){
     optimizer.setVerbose(true);
     cout << endl;
     cout << "Performing full BA:" << endl;
-    optimizer.optimize(40);
+
+    //    g2o::VertexSE3Expmap* pKF1 = static_cast<g2o::VertexSE3Expmap*> (optimizer.vertex(1));
+    //    for (int i=0; i<5; i++) {
+    //        optimizer.optimize(1);
+    //        cout << pKF1->A() << endl;
+    //    }
+
+    optimizer.optimize(10);
     cout << endl;
 
     // show results
-    cout << "cam 0: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 0)) << endl;
-    cout << "cam 1: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 1)) << endl;
-    cout << "cam 2: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 2)) << endl;
-    cout << "cam 9: " << endl << toSE3Quat(estimateVertexSE3Expmap(optimizer, 9)) << endl;
+    for (int i=0; i<10; i++) {
+        g2o::SE3Quat se3KFTmp = toSE3Quat(estimateVertexSE3Expmap(optimizer, i));
+        Vector3d trans = se3KFTmp.translation();
+        cout << "cam " << i << ": "
+             << trans(0) << ' '
+             << trans(1) << ' '
+             << trans(2) << ' ' << endl;
+    }
 
+    // sparsifier test
+    g2o::SE3Quat z_out;
+    g2o::Matrix6d info_out;
+    Sparsifier::DoMarginalizeSE3XYZ(sim.mvTrueKFs, sim.mvTrueMPs, sim.mvMeasSE3XYZ, z_out, info_out);
 
+    cout << "Information matrix: " << endl;
+    cout << info_out << endl;
+    cout << "Measurement: " << endl;
+    cout << z_out << endl;
 }

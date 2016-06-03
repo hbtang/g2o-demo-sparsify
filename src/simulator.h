@@ -39,7 +39,7 @@ public:
     void GenMeasSE3Expmap();
 
     vector<Eigen::Vector3d> mvTrueMPs;
-    vector<g2o::SE3Quat, Eigen::aligned_allocator<g2o::SE3Quat> > mvTrueKFs;
+    vector<g2o::SE3Quat> mvTrueKFs;
 
     vector<MeasSE3XYZ> mvMeasSE3XYZ;
     vector<MeasXYZ2UV> mvMeasXYZ2UV;
